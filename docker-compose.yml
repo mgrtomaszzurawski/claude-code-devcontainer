@@ -1,0 +1,80 @@
+# =============================================================================
+# Claude Code Dev Environment
+#
+# Usage:
+#   docker compose up -d --build    # build & start
+#   docker attach claude-dev        # attach to Claude Code session
+#   docker exec -it claude-dev bash # open a second shell
+#
+# Detach from attached session: Ctrl+P, Ctrl+Q (keeps container running)
+# =============================================================================
+
+services:
+  claude-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: claude-dev
+    hostname: claude-dev
+    stdin_open: true   # -i : needed for interactive Claude Code session
+    tty: true          # -t : needed for terminal colors/input
+
+    environment:
+      # --- Git identity (optional, set in .env) ---
+      - GIT_USER_NAME=${GIT_USER_NAME:-}
+      - GIT_USER_EMAIL=${GIT_USER_EMAIL:-}
+
+      # --- SonarQube ---
+      - SONAR_HOST_URL=${SONAR_HOST_URL:-http://host.docker.internal:9000}
+      - SONAR_LOGIN=${SONAR_LOGIN:-admin}
+      - SONAR_PASSWORD=${SONAR_PASSWORD:-admin}
+
+    volumes:
+      # Workspace - mount your project repo(s) here
+      - ./workspace:/workspace
+
+      # Persist Claude Code config between restarts
+      - claude-config:/home/node/.claude
+
+      # Persist Maven local repo (avoid re-downloading deps)
+      - maven-repo:/home/node/.m2
+
+      # Persist npm cache
+      - npm-cache:/home/node/.npm
+
+      # Git credentials / SSH keys (read-only from host)
+      - ${HOME}/.ssh:/home/node/.ssh:ro
+
+      # Git credential store (optional, read-only)
+      # - ${HOME}/.gitconfig:/home/node/.gitconfig:ro
+
+    # Full internet access - no network restrictions
+    networks:
+      - dev-net
+
+    # Optional: connect to host network for access to local services
+    # Uncomment ONE of the following approaches:
+
+    # OPTION A: extra_hosts (recommended - works with dev-net bridge)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    # OPTION B: host network (full access, but loses container DNS)
+    # network_mode: "host"
+
+    # Resource limits (adjust to your machine)
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 2G
+
+networks:
+  dev-net:
+    driver: bridge
+
+volumes:
+  claude-config:
+  maven-repo:
+  npm-cache:
