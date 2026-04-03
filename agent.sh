@@ -17,29 +17,70 @@ case "$CMD" in
       echo "Name cannot be empty."
       exit 1
     fi
-    if [ -d "connection/$AGENT" ]; then
+    if [ -d "agent-shells/$AGENT" ]; then
       echo "Agent '$AGENT' already exists."
       exit 1
     fi
 
     # Create folder structure
-    mkdir -p "workspace/$AGENT" "agents/$AGENT/claude" "connection/$AGENT"
+    mkdir -p "agent-data/$AGENT" "agent-shells/$AGENT"
 
     # Generate wrapper scripts
-    for cmd in start stop attach bash destroy logs; do
-      cat > "connection/$AGENT/$cmd.sh" <<EOF
+    # .bat: numbered 1-7 for Windows Explorer ordering
+    # .sh: lettered a-g for terminal tab-completion ordering
+    BAT_NUM=0
+    SH_LETTER=96  # ASCII 'a' - 1
+    for cmd in start attach bash logs stop destroy list; do
+      BAT_NUM=$((BAT_NUM + 1))
+      SH_LETTER=$((SH_LETTER + 1))
+      SH_PREFIX=$(printf "\\$(printf '%03o' $SH_LETTER)")
+
+      # .sh wrapper
+      if [ "$cmd" = "list" ]; then
+        cat > "agent-shells/$AGENT/${SH_PREFIX}-${cmd}.sh" <<EOF
+#!/bin/bash
+cd "\$(dirname "\$0")/../.."
+./agent.sh list
+EOF
+      else
+        cat > "agent-shells/$AGENT/${SH_PREFIX}-${cmd}.sh" <<EOF
 #!/bin/bash
 cd "\$(dirname "\$0")/../.."
 ./agent.sh $cmd $AGENT
 EOF
-      chmod +x "connection/$AGENT/$cmd.sh"
+      fi
+      chmod +x "agent-shells/$AGENT/${SH_PREFIX}-${cmd}.sh"
+
+      # .bat wrapper
+      if [ "$cmd" = "attach" ] || [ "$cmd" = "bash" ]; then
+        cat > "agent-shells/$AGENT/${BAT_NUM}-${cmd}.bat" <<EOF
+@echo off
+cd /d "%~dp0\\..\\.."
+"%ProgramFiles%\Git\bin\bash.exe" --login -c "./agent.sh $cmd $AGENT; exec bash"
+EOF
+      elif [ "$cmd" = "list" ]; then
+        cat > "agent-shells/$AGENT/${BAT_NUM}-${cmd}.bat" <<EOF
+@echo off
+cd /d "%~dp0\\..\\.."
+"%ProgramFiles%\Git\bin\bash.exe" --login -c "./agent.sh list"
+pause
+EOF
+      else
+        cat > "agent-shells/$AGENT/${BAT_NUM}-${cmd}.bat" <<EOF
+@echo off
+cd /d "%~dp0\\..\\.."
+"%ProgramFiles%\Git\bin\bash.exe" --login -c "./agent.sh $cmd $AGENT"
+pause
+EOF
+      fi
     done
 
     echo "Agent '$AGENT' created."
-    echo "  Folder:    connection/$AGENT/"
-    echo "  Workspace: workspace/$AGENT/"
+    echo "  Folder:    agent-shells/$AGENT/"
+    echo "  Workspace: agent-data/$AGENT/"
     echo ""
-    echo "  Start:     connection/$AGENT/start.sh"
+    echo "  Start:  agent-shells/$AGENT/1-start"
+    echo "  Attach: agent-shells/$AGENT/2-attach"
     ;;
 
   start)
@@ -47,7 +88,7 @@ EOF
       echo "Usage: ./agent.sh start <agent-name>"
       exit 1
     fi
-    mkdir -p "workspace/$AGENT" "agents/$AGENT/claude"
+    mkdir -p "agent-data/$AGENT"
 
     # Check if container exists but is stopped
     if docker ps -a --filter "name=^claude-${AGENT}$" --format "{{.Status}}" | grep -q "Exited"; then
@@ -58,8 +99,8 @@ EOF
 
     echo ""
     echo "Agent '$AGENT' is running."
-    echo "  Attach: connection/$AGENT/attach.sh"
-    echo "  Bash:   connection/$AGENT/bash.sh"
+    echo "  Attach: agent-shells/$AGENT/2-attach"
+    echo "  Bash:   agent-shells/$AGENT/3-bash"
     ;;
 
   stop)
@@ -117,16 +158,19 @@ EOF
     fi
 
     AGENT="$AGENT" docker compose -p "claude-$AGENT" down 2>/dev/null
-    rm -rf "connection/$AGENT" "agents/$AGENT" "workspace/$AGENT"
+    # Clean up orphaned per-agent volumes (from older config versions)
+    docker volume rm "claude-config-${AGENT}" 2>/dev/null
+    docker volume rm "claude-${AGENT}_maven-repo" "claude-${AGENT}_npm-cache" 2>/dev/null
+    rm -rf "agent-shells/$AGENT" "agent-data/$AGENT"
     echo "Agent '$AGENT' destroyed."
     ;;
 
   list)
     echo "Claude agents:"
     echo ""
-    # Show all connection folders with status
-    if [ -d "connection" ] && [ "$(ls -A connection 2>/dev/null)" ]; then
-      for dir in connection/*/; do
+    # Show all agent folders with status
+    if [ -d "agent-shells" ] && [ "$(ls -A agent-shells 2>/dev/null)" ]; then
+      for dir in agent-shells/*/; do
         name=$(basename "$dir")
         status=$(docker ps -a --filter "name=^claude-${name}$" --format "{{.Status}}" 2>/dev/null)
         if [ -z "$status" ]; then

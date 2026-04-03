@@ -1,5 +1,5 @@
 .env
-workspace/
-agents/
-connection/
+agent-data/
+agent-shells/
 logs/
+.reviews/

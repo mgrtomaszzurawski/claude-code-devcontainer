@@ -1,6 +1,16 @@
 #!/bin/bash
 # Entrypoint for Claude Code dev container
 
+# Initialize home volume on first run (volume starts empty, image files are shadowed)
+if [ ! -f /home/node/.initialized ]; then
+    mkdir -p /home/node/.claude/commands /home/node/.m2 /home/node/.npm
+    touch /home/node/.initialized
+fi
+
+# Install/update skills, hooks, settings from image (/opt/claude/)
+cp /opt/claude/skills/review.md /home/node/.claude/commands/review.md 2>/dev/null
+cp /opt/claude/settings.json /home/node/.claude/settings.json 2>/dev/null
+
 # Git identity
 if [ -n "$GIT_USER_NAME" ]; then
     git config --global user.name "$GIT_USER_NAME"

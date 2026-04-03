@@ -27,17 +27,15 @@ services:
 
     volumes:
       # Each agent gets its own workspace subfolder
-      - ./workspace/${AGENT:-default}:/workspace
+      - ./agent-data/${AGENT:-default}:/workspace
 
-      # Each agent gets its own Claude config (session, memory, history)
-      - ./agents/${AGENT:-default}/claude:/home/node/.claude
-
-      # Maven and npm cache shared between all agents
-      - maven-repo:/home/node/.m2
-      - npm-cache:/home/node/.npm
+      # Entire home dir shared between all agents
+      # Auth (.claude.json), config (.claude/), maven (.m2), npm (.npm) - all persist
+      - claude-home:/home/node
 
       # Git credentials from host (read-only)
-      - ${HOME}/.ssh:/home/node/.ssh:ro
+      # SSH keys from host (not read-only - known_hosts needs to be writable)
+      - ${HOME}/.ssh:/home/node/.ssh
 
     networks:
       - dev-net
@@ -57,5 +55,5 @@ networks:
     driver: bridge
 
 volumes:
-  maven-repo:
-  npm-cache:
+  claude-home:
+    name: claude-home

@@ -1,7 +1,8 @@
 # Claude Code Dev Container
 
-Docker container with Claude Code (Max x20) + full-stack dev tools.
-Each agent runs in an isolated container with its own workspace and Claude config.
+Docker-based multi-agent setup for Claude Code (Max x20) with `--dangerously-skip-permissions`.
+Each agent runs in an isolated container with its own workspace. Auth, settings, and caches
+are shared between all agents via a single Docker volume.
 
 ## What's inside
 
@@ -9,10 +10,10 @@ Each agent runs in an isolated container with its own workspace and Claude confi
 - **Java 17** + Maven 3.9.9
 - **Node.js 20** + TypeScript, Angular CLI 19
 - **DB clients**: PostgreSQL, MySQL
-- **Git** + GitHub CLI (with wrapper blocking destructive commands)
+- **Git** + GitHub CLI (with wrapper blocking destructive commands like `gh repo delete`)
 - Host access via `host.docker.internal` (SonarQube etc.)
 
-## Quick start
+## Quick start (first time)
 
 ```bash
 # 1. Copy config file
@@ -22,14 +23,18 @@ cp .env.example .env
 # 2. Build image (first time only, or after Dockerfile changes)
 docker compose build
 
-# 3. Create an agent
+# 3. Create an agent (Windows: double-click agent-create.bat)
 ./agent.sh create backend
 
 # 4. Start and attach
-connection/backend/start.sh
-connection/backend/attach.sh
-# -> First run: claude login - open URL in browser
-# -> Claude Code starts automatically with --dangerously-skip-permissions
+agent-shells/backend/1-start.bat   # Windows double-click
+agent-shells/backend/2-attach.bat  # Windows double-click
+# or from terminal:
+./agent.sh start backend
+./agent.sh attach backend
+
+# 5. First run only: choose theme and log in via browser
+#    All subsequent agents inherit auth automatically.
 ```
 
 ## Agent management scripts
@@ -40,35 +45,46 @@ connection/backend/attach.sh
 ./agent.sh create backend
 ```
 
-Creates `connection/backend/` with ready-to-use scripts, `workspace/backend/`
-as container workspace, and `agents/backend/claude/` for Claude configuration.
+Creates `agent-shells/backend/` with ready-to-use scripts and `agent-data/backend/`
+as the agent's workspace (mounted as `/workspace` in the container).
 
 ### Daily usage
 
-Go to `connection/{name}/` and everything is at hand:
+Go to `agent-shells/{name}/` - scripts are numbered for logical order:
 
 | Script | What it does |
 |--------|-------------|
-| `start.sh` | Start or resume container |
-| `attach.sh` | Attach to Claude Code session (auto-starts if needed) |
-| `bash.sh` | Open additional bash terminal alongside running Claude |
-| `stop.sh` | Stop container (data persists) |
-| `logs.sh` | Show container startup logs |
-| `destroy.sh` | Remove container, workspace and config (asks for confirmation) |
+| `1-start` | Start or resume container |
+| `2-attach` | Attach to Claude Code session (auto-starts if needed) |
+| `3-bash` | Open additional bash terminal alongside running Claude |
+| `4-logs` | Show container startup logs |
+| `5-stop` | Stop container (data persists) |
+| `6-destroy` | Remove container and workspace (asks for confirmation) |
+| `7-list` | Show all agents and their status |
+
+Each script has a `.bat` (Windows double-click) and `.sh` (terminal) version.
 
 Example work session:
 
 ```bash
-connection/backend/start.sh      # start
-connection/backend/attach.sh     # attach to claude
+agent-shells/backend/1-start.bat      # start
+agent-shells/backend/2-attach.bat     # attach to claude
 
 # ... work ...
-# Ctrl+P, Ctrl+Q                 # detach without stopping
-# or exit                        # quit claude (container stops)
+# Ctrl+P, Ctrl+Q                      # detach without stopping
+# or exit                             # quit claude (container stops)
 
-connection/backend/start.sh      # resume after exit
-connection/backend/attach.sh     # reattach
+agent-shells/backend/1-start.bat      # resume after exit
+agent-shells/backend/2-attach.bat     # reattach
 ```
+
+### Top-level .bat scripts (Windows)
+
+| Script | What it does |
+|--------|-------------|
+| `agent-create.bat` | Ask for name, create agent, open folder in Explorer |
+| `agent-list.bat` | Show all agents and status |
+| `agent-destroy.bat` | Show agents, ask which to destroy (loop) |
 
 ### Multiple agents at once
 
@@ -76,15 +92,15 @@ connection/backend/attach.sh     # reattach
 ./agent.sh create backend
 ./agent.sh create frontend
 
-connection/backend/start.sh      # terminal 1
-connection/backend/attach.sh
+agent-shells/backend/1-start.bat      # terminal 1
+agent-shells/backend/2-attach.bat
 
-connection/frontend/start.sh     # terminal 2
-connection/frontend/attach.sh
+agent-shells/frontend/1-start.bat     # terminal 2
+agent-shells/frontend/2-attach.bat
 ```
 
-Each agent has its own workspace and Claude config (sessions, memory, history).
-Maven and npm caches are shared - dependencies are downloaded only once.
+Each agent has its own workspace. Auth, settings, theme, Maven/npm caches
+are shared between all agents - log in once, works everywhere.
 
 ### List agents
 
@@ -92,55 +108,70 @@ Maven and npm caches are shared - dependencies are downloaded only once.
 ./agent.sh list
 ```
 
-Shows all agents and their status (running, stopped, not created).
-
 ### Removing an agent
 
 ```bash
-connection/backend/destroy.sh
+agent-shells/backend/6-destroy.bat
 # or
 ./agent.sh destroy backend
 ```
 
-Removes the container, `connection/backend/`, `workspace/backend/`
-and `agents/backend/`. Asks for confirmation.
+Removes the container and `agent-shells/backend/`, `agent-data/backend/`.
+Shared volume (auth, caches) is not affected.
 
 ## Folder structure
 
 ```
-connection/          # per-agent scripts (generated by create)
+agent-shells/        # per-agent scripts (generated by create)
   backend/
-    start.sh, attach.sh, bash.sh, stop.sh, logs.sh, destroy.sh
+    1-start.bat, 2-attach.bat, ... 7-list.bat
+    a-start.sh,  b-attach.sh,  ... g-list.sh
   frontend/
     ...
-workspace/           # per-agent code (bind mount to /workspace in container)
-  backend/
+agent-data/          # per-agent workspace (mounted as /workspace in container)
+  backend/           # put your project files here
   frontend/
-agents/              # per-agent Claude config (bind mount to /home/node/.claude)
-  backend/claude/
-  frontend/claude/
 agent.sh             # main management script
 docker-compose.yml   # container template (parameterized by AGENT)
 Dockerfile           # image with dev tools
-entrypoint.sh        # container startup script
+settings.json        # Claude Code settings (hooks, permissions)
+skills/              # review skill prompts (baked into image at /opt/claude/skills/)
+hooks/               # pre/post merge hooks (baked into image at /opt/claude/hooks/)
+CLAUDE.md            # instructions for Claude Code inside containers
 ```
 
 ## Working with code
 
-Folder `workspace/{agent}/` is mounted as `/workspace` in the container.
+`agent-data/{agent}/` on your host is mounted as `/workspace` in the container.
+Put your project files directly there.
 
 ```bash
-# Clone repo to workspace on host
-cd workspace/backend
-git clone git@github.com:your-org/your-repo.git
+# Clone repo into agent workspace on host
+cd agent-data/backend
+git clone https://github.com/your-org/your-repo.git .
 
-# Or from inside the container
-connection/backend/bash.sh
+# Or clone from inside the container
+agent-shells/backend/3-bash.bat
 cd /workspace
-git clone https://github.com/your-org/your-repo.git
+git clone https://github.com/your-org/your-repo.git .
 ```
 
-## SonarQube access (or other local services)
+Note the `.` at the end - clones into current directory, not a subfolder.
+
+## Pre-merge review gate
+
+A hook triggers automatically when Claude runs `gh pr merge`:
+
+1. Claude works on feature branch, creates PR
+2. Claude tries `gh pr merge` - hook spawns `/review` skill
+3. Review orchestrator spawns specialized subagents (Java, TS, Security, Quality, etc.)
+4. If approved: merge proceeds
+5. If rejected: merge blocked, Claude gets feedback, fixes issues, retries
+6. Max 3 attempts per branch, then manual review required
+
+Run `/review` manually before merge to catch issues early and save attempts.
+
+## SonarQube access
 
 SonarQube running on host is accessible from container at:
 ```
@@ -166,6 +197,38 @@ docker cp ./file.txt claude-backend:/workspace/file.txt
 
 Prefer git push/pull through workspace instead.
 
+## Shared volume
+
+All agents share a single Docker volume (`claude-home`) mounted at `/home/node`.
+This contains:
+
+| Data | Persists across |
+|------|----------------|
+| Auth (`.claude.json`, `.claude/.credentials.json`) | All agents, restarts, recreates |
+| Theme and UI preferences | All agents, restarts, recreates |
+| Claude settings and hooks (`.claude/settings.json`) | All agents, restarts, recreates |
+| Maven cache (`.m2/`) | All agents, restarts, recreates |
+| npm cache (`.npm/`) | All agents, restarts, recreates |
+| Chat history (`.claude/projects/`) | All agents, restarts, recreates |
+
+To reset everything (forces re-login):
+```bash
+docker volume rm claude-home
+```
+
+## Rebuilding the image
+
+After changes to Dockerfile, skills, hooks, or settings:
+
+```bash
+docker compose build              # uses cache
+docker compose build --no-cache   # full rebuild
+```
+
+Then stop and start agents to pick up the new image.
+Entrypoint, skills, hooks, and settings are stored in `/opt/claude/` inside the image
+(not in the home volume) so they always update with rebuilds.
+
 ---
 
 ## Docker command reference
@@ -180,33 +243,7 @@ Prefer git push/pull through workspace instead.
 | `docker compose up -d` | Creates and starts container | After `down` or first time |
 | `docker compose up -d --build` | Rebuilds image and starts | After Dockerfile changes |
 
-### Multiple terminals
-
-Main container process is Claude Code. You can open any number of
-additional bash sessions alongside:
-
-```bash
-connection/backend/attach.sh      # terminal 1 - claude
-connection/backend/bash.sh        # terminal 2 - bash
-connection/backend/bash.sh        # terminal 3 - another bash
-```
-
 ### What is this container
 
 Isolated Linux (Debian) with CLI tools. No GUI, no remote desktop.
 Terminal in, terminal out.
-
-### Volumes (persistent - survive restart and stop)
-
-| Data | Host location | Container path |
-|------|--------------|----------------|
-| Workspace | `./workspace/{agent}/` | `/workspace` |
-| Claude config | `./agents/{agent}/claude/` | `/home/node/.claude` |
-| Maven cache | volume `maven-repo` | `/home/node/.m2` |
-| npm cache | volume `npm-cache` | `/home/node/.npm` |
-
-### Reset Claude session for an agent
-
-```bash
-rm -rf agents/{name}/claude/*
-```

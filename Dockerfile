@@ -104,10 +104,18 @@ RUN git config --global init.defaultBranch main \
     && git config --global core.autocrlf input
 
 # ---------------------------------------------------------------------------
-# 9. Entrypoint
+# 9. Built-in skills, hooks, settings (stored in /opt/claude - outside home volume)
 # ---------------------------------------------------------------------------
-COPY --chown=node:node entrypoint.sh /home/node/entrypoint.sh
-RUN chmod +x /home/node/entrypoint.sh
+COPY --chown=node:node skills/ /opt/claude/skills/
+COPY --chown=node:node hooks/ /opt/claude/hooks/
+RUN chmod +x /opt/claude/hooks/*.sh
+COPY --chown=node:node settings.json /opt/claude/settings.json
 
-ENTRYPOINT ["/home/node/entrypoint.sh"]
+# ---------------------------------------------------------------------------
+# 10. Entrypoint
+# ---------------------------------------------------------------------------
+COPY --chown=node:node entrypoint.sh /opt/claude/entrypoint.sh
+RUN chmod +x /opt/claude/entrypoint.sh
+
+ENTRYPOINT ["/opt/claude/entrypoint.sh"]
 CMD ["claude", "--dangerously-skip-permissions"]
