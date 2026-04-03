@@ -2,14 +2,21 @@
 
 Isolated dev container with --dangerously-skip-permissions. All tools pre-approved.
 
+## Commit rules
+
+- NEVER add Co-Authored-By, Generated-by, or any AI/Claude/Anthropic attribution to commits, PRs, code comments, or anywhere else. This is a tool, not an author.
+
 ## Branch workflow
 
-- NEVER commit directly to main. Always create a feature branch first.
+- NEVER commit directly to main or develop. Always create a feature branch first.
 - Work on feature branches: `git checkout -b feature/description`
-- Commit, push, create PR with `gh pr create`
-- Run `/review` before attempting merge - fix issues early to save merge attempts.
-- Merge with `gh pr merge` (triggers automatic review gate, max 3 attempts).
-- If review rejects: fix findings, push, try merge again.
+- Commit often at points of interest - after completing a logical step, fixing a bug, adding a feature. Do NOT save all commits for the end before PR creation.
+- Push your changes regularly.
+- Create PR targeting **develop** branch: `gh pr create --base develop`
+- AFTER the PR is created, run `/review` to check for issues. Fix any findings before merging.
+- Squash merge to develop, keep the branch: `gh pr merge --squash --delete-branch=false`
+- If review rejects at merge: fix findings, push, try merge again.
+- NEVER create PRs to main. Only the project owner merges develop to main.
 
 ## Review gate
 

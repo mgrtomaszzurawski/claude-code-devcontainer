@@ -37,6 +37,12 @@ services:
       # SSH keys from host (not read-only - known_hosts needs to be writable)
       - ${HOME}/.ssh:/home/node/.ssh
 
+      # Live-mounted config - edit on host, agents see changes immediately (no rebuild)
+      - ./skills:/opt/claude/skills:ro
+      - ./hooks:/opt/claude/hooks:ro
+      - ./CLAUDE.md:/opt/claude/CLAUDE.md:ro
+      - ./settings.json:/opt/claude/settings.json:ro
+
     networks:
       - dev-net
 

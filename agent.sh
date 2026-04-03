@@ -30,7 +30,7 @@ case "$CMD" in
     # .sh: lettered a-g for terminal tab-completion ordering
     BAT_NUM=0
     SH_LETTER=96  # ASCII 'a' - 1
-    for cmd in start attach bash logs stop destroy list; do
+    for cmd in start attach bash logs stop destroy reset list; do
       BAT_NUM=$((BAT_NUM + 1))
       SH_LETTER=$((SH_LETTER + 1))
       SH_PREFIX=$(printf "\\$(printf '%03o' $SH_LETTER)")
@@ -94,7 +94,7 @@ EOF
     if docker ps -a --filter "name=^claude-${AGENT}$" --format "{{.Status}}" | grep -q "Exited"; then
       AGENT="$AGENT" docker compose -p "claude-$AGENT" start
     else
-      AGENT="$AGENT" docker compose -p "claude-$AGENT" up -d
+      AGENT="$AGENT" docker compose -p "claude-$AGENT" up -d --build
     fi
 
     echo ""
@@ -146,6 +146,30 @@ EOF
     docker logs "claude-$AGENT"
     ;;
 
+  reset)
+    if [ -z "$AGENT" ]; then
+      echo "Usage: ./agent.sh reset <agent-name>"
+      exit 1
+    fi
+    if [ ! -d "agent-shells/$AGENT" ]; then
+      echo "Agent '$AGENT' does not exist."
+      exit 1
+    fi
+    echo "Resetting agent '$AGENT' (removes container + scripts, keeps workspace files)."
+    read -p "Continue? [y/N] " confirm
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+      echo "Cancelled."
+      exit 0
+    fi
+
+    AGENT="$AGENT" docker compose -p "claude-$AGENT" down 2>/dev/null
+    rm -rf "agent-shells/$AGENT"
+    echo "Agent '$AGENT' reset. Workspace files in agent-data/$AGENT/ preserved."
+    echo ""
+    # Recreate immediately
+    "$0" create "$AGENT"
+    ;;
+
   destroy)
     if [ -z "$AGENT" ]; then
       echo "Usage: ./agent.sh destroy <agent-name>"
@@ -158,9 +182,6 @@ EOF
     fi
 
     AGENT="$AGENT" docker compose -p "claude-$AGENT" down 2>/dev/null
-    # Clean up orphaned per-agent volumes (from older config versions)
-    docker volume rm "claude-config-${AGENT}" 2>/dev/null
-    docker volume rm "claude-${AGENT}_maven-repo" "claude-${AGENT}_npm-cache" 2>/dev/null
     rm -rf "agent-shells/$AGENT" "agent-data/$AGENT"
     echo "Agent '$AGENT' destroyed."
     ;;
@@ -195,6 +216,7 @@ EOF
     echo "  attach <name>   Attach to Claude Code session"
     echo "  bash <name>     Open bash in agent container"
     echo "  logs <name>     Show agent startup logs"
+    echo "  reset <name>    Remove container + scripts, keep workspace files"
     echo "  destroy <name>  Remove agent, config, and workspace"
     echo "  list            Show all agents and their status"
     ;;

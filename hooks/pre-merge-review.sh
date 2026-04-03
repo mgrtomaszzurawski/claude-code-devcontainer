@@ -42,6 +42,16 @@ fi
 # Save branch name for post-merge cleanup (HEAD may change after merge)
 echo "$BRANCH" > "$REVIEW_DIR/.last-merge-branch"
 
+# Skip if manual /review already approved this branch
+APPROVED_FILE="$REVIEW_DIR/${PR_ID}.approved"
+if [ -f "$APPROVED_FILE" ]; then
+    FLAG=$(cat "$APPROVED_FILE" 2>/dev/null | tr -d '[:space:]')
+    if [ "$FLAG" = "true" ]; then
+        echo "Review already PASSED for '$BRANCH' (manual /review). Proceeding with merge."
+        exit 0
+    fi
+fi
+
 # Run review with timeout
 echo "Running pre-merge review for '$BRANCH' (attempt $((ATTEMPTS + 1))/$MAX_ATTEMPTS)..."
 REVIEW_OUTPUT=$(timeout "$TIMEOUT_SECONDS" claude --dangerously-skip-permissions -p "Read /opt/claude/skills/review.md and execute it on the current branch. Do NOT run gh pr merge. Output the review report." --max-turns 30 2>&1)

@@ -7,9 +7,10 @@ if [ ! -f /home/node/.initialized ]; then
     touch /home/node/.initialized
 fi
 
-# Install/update skills, hooks, settings from image (/opt/claude/)
+# Install/update skills, hooks, settings, CLAUDE.md from /opt/claude/ (bind-mounted from host)
 cp /opt/claude/skills/review.md /home/node/.claude/commands/review.md 2>/dev/null
 cp /opt/claude/settings.json /home/node/.claude/settings.json 2>/dev/null
+cp /opt/claude/CLAUDE.md /home/node/.claude/CLAUDE.md 2>/dev/null
 
 # Git identity
 if [ -n "$GIT_USER_NAME" ]; then
@@ -40,7 +41,7 @@ echo " For plain bash: docker exec -it <container> bash"
 echo "============================================"
 
 # Check if logged in; if not, prompt login
-if ! claude auth status &>/dev/null 2>&1; then
+if ! claude auth status &>/dev/null; then
     echo ""
     echo " Not logged in yet. Starting login..."
     echo ""

@@ -21,5 +21,5 @@ COUNTER_FILE="$REVIEW_DIR/${PR_ID}.review-attempts"
 # Verify merge actually happened
 PR_STATE=$(gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null)
 if [ "$PR_STATE" = "MERGED" ]; then
-    rm -f "$COUNTER_FILE" "$BRANCH_FILE" 2>/dev/null
+    rm -f "$COUNTER_FILE" "$BRANCH_FILE" "$REVIEW_DIR/${PR_ID}.approved" 2>/dev/null
 fi

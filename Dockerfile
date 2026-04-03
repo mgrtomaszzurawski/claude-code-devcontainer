@@ -106,6 +106,7 @@ RUN git config --global init.defaultBranch main \
 # ---------------------------------------------------------------------------
 # 9. Built-in skills, hooks, settings (stored in /opt/claude - outside home volume)
 # ---------------------------------------------------------------------------
+COPY --chown=node:node CLAUDE.md /opt/claude/CLAUDE.md
 COPY --chown=node:node skills/ /opt/claude/skills/
 COPY --chown=node:node hooks/ /opt/claude/hooks/
 RUN chmod +x /opt/claude/hooks/*.sh
