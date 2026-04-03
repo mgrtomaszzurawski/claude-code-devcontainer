@@ -1,142 +1,212 @@
 # Claude Code Dev Container
 
-Docker container z Claude Code (Max x20) + full-stack dev tools.
+Docker container with Claude Code (Max x20) + full-stack dev tools.
+Each agent runs in an isolated container with its own workspace and Claude config.
 
-## Co jest w srodku
+## What's inside
 
-- **Claude Code** z `--dangerously-skip-permissions` (domyslnie)
+- **Claude Code** with `--dangerously-skip-permissions` (default)
 - **Java 17** + Maven 3.9.9
 - **Node.js 20** + TypeScript, Angular CLI 19
 - **DB clients**: PostgreSQL, MySQL
-- **Git** + GitHub CLI (z wrapperem blokujacym destrukcyjne komendy)
-- Dostep do hosta przez `host.docker.internal` (SonarQube itp.)
+- **Git** + GitHub CLI (with wrapper blocking destructive commands)
+- Host access via `host.docker.internal` (SonarQube etc.)
 
-## Szybki start (pierwszy raz)
+## Quick start
 
 ```bash
-# 1. Skopiuj plik konfiguracyjny
+# 1. Copy config file
 cp .env.example .env
-# Edytuj .env - ustaw GIT_USER_NAME, GIT_USER_EMAIL
+# Edit .env - set GIT_USER_NAME, GIT_USER_EMAIL
 
-# 2. Zbuduj i uruchom
-docker compose up -d --build
+# 2. Build image (first time only, or after Dockerfile changes)
+docker compose build
 
-# 3. Podlacz sie do kontenera (pierwsze logowanie)
-docker attach claude-dev
-# -> Kontener odpali `claude login` - otworz URL w przegladarce
+# 3. Create an agent
+./agent.sh create backend
 
-# 4. Gotowe - Claude Code startuje automatycznie
+# 4. Start and attach
+connection/backend/start.sh
+connection/backend/attach.sh
+# -> First run: claude login - open URL in browser
+# -> Claude Code starts automatically with --dangerously-skip-permissions
 ```
 
-## Codzienne uzycie
+## Agent management scripts
+
+### Creating an agent
 
 ```bash
-# Ponowne uruchomienie (bez budowania - obraz juz jest)
-docker compose up -d
-docker attach claude-dev
-
-# Albo jesli kontener jest zatrzymany ale nie usuniety (po exit z claude)
-docker compose start
-docker attach claude-dev
-
-# Odlacz sie BEZ zatrzymywania: Ctrl+P, Ctrl+Q
-
-# Otworz drugi terminal (bash) OBOK dzialajacego claude
-docker exec -it claude-dev bash
-
-# Zatrzymaj kontener
-docker compose stop           # zatrzymuje, kontener zostaje (start go wznowi)
-docker compose down           # zatrzymuje i usuwa kontener (wolumeny zostaja)
+./agent.sh create backend
 ```
 
-### Roznica miedzy stop/down/start/up
+Creates `connection/backend/` with ready-to-use scripts, `workspace/backend/`
+as container workspace, and `agents/backend/claude/` for Claude configuration.
 
-| Komenda | Co robi | Kiedy uzywac |
-|---------|---------|--------------|
-| `docker compose stop` | Zatrzymuje kontener, nie usuwa | Przerwa w pracy |
-| `docker compose start` | Wznawia zatrzymany kontener | Wracasz do pracy |
-| `docker compose down` | Zatrzymuje i usuwa kontener | Chcesz czysty start |
-| `docker compose up -d` | Tworzy i startuje kontener | Po `down` lub pierwszy raz |
-| `docker compose up -d --build` | Przebudowuje obraz i startuje | Po zmianach w Dockerfile |
+### Daily usage
 
-## Wiele terminali naraz
+Go to `connection/{name}/` and everything is at hand:
 
-Glowny proces kontenera to Claude Code. Ale mozesz otworzyc dowolna ilosc
-dodatkowych sesji bash obok:
+| Script | What it does |
+|--------|-------------|
+| `start.sh` | Start or resume container |
+| `attach.sh` | Attach to Claude Code session (auto-starts if needed) |
+| `bash.sh` | Open additional bash terminal alongside running Claude |
+| `stop.sh` | Stop container (data persists) |
+| `logs.sh` | Show container startup logs |
+| `destroy.sh` | Remove container, workspace and config (asks for confirmation) |
+
+Example work session:
 
 ```bash
-# Terminal 1 - claude (attach do glownego procesu)
-docker attach claude-dev
+connection/backend/start.sh      # start
+connection/backend/attach.sh     # attach to claude
 
-# Terminal 2 - bash (nowy proces w tym samym kontenerze)
-docker exec -it claude-dev bash
+# ... work ...
+# Ctrl+P, Ctrl+Q                 # detach without stopping
+# or exit                        # quit claude (container stops)
 
-# Terminal 3 - kolejny bash
-docker exec -it claude-dev bash
+connection/backend/start.sh      # resume after exit
+connection/backend/attach.sh     # reattach
 ```
 
-Kazdy `docker exec` to nowy proces w tym samym kontenerze - wspoldzieli
-system plikow, siec, zmienne srodowiskowe. Mozna odpalac testy, ogladac logi,
-klonowac repo - wszystko rownolegle z claude.
-
-## Czym jest ten kontener
-
-To izolowany Linux (Debian) z zainstalowanymi narzedziami. Nie ma GUI,
-pulpitu zdalnego, menadzerow okien. To czyste jadro + shell + narzedzia CLI.
-Wchodzisz przez terminal, pracujesz w terminalu.
-
-## Praca z kodem
-
-Folder `./workspace/` jest zamontowany jako `/workspace` w kontenerze.
+### Multiple agents at once
 
 ```bash
-# Sklonuj repo do workspace/ na hoscie
-cd workspace
+./agent.sh create backend
+./agent.sh create frontend
+
+connection/backend/start.sh      # terminal 1
+connection/backend/attach.sh
+
+connection/frontend/start.sh     # terminal 2
+connection/frontend/attach.sh
+```
+
+Each agent has its own workspace and Claude config (sessions, memory, history).
+Maven and npm caches are shared - dependencies are downloaded only once.
+
+### List agents
+
+```bash
+./agent.sh list
+```
+
+Shows all agents and their status (running, stopped, not created).
+
+### Removing an agent
+
+```bash
+connection/backend/destroy.sh
+# or
+./agent.sh destroy backend
+```
+
+Removes the container, `connection/backend/`, `workspace/backend/`
+and `agents/backend/`. Asks for confirmation.
+
+## Folder structure
+
+```
+connection/          # per-agent scripts (generated by create)
+  backend/
+    start.sh, attach.sh, bash.sh, stop.sh, logs.sh, destroy.sh
+  frontend/
+    ...
+workspace/           # per-agent code (bind mount to /workspace in container)
+  backend/
+  frontend/
+agents/              # per-agent Claude config (bind mount to /home/node/.claude)
+  backend/claude/
+  frontend/claude/
+agent.sh             # main management script
+docker-compose.yml   # container template (parameterized by AGENT)
+Dockerfile           # image with dev tools
+entrypoint.sh        # container startup script
+```
+
+## Working with code
+
+Folder `workspace/{agent}/` is mounted as `/workspace` in the container.
+
+```bash
+# Clone repo to workspace on host
+cd workspace/backend
 git clone git@github.com:your-org/your-repo.git
 
-# Albo sklonuj z wnetrza kontenera
-docker exec -it claude-dev bash
+# Or from inside the container
+connection/backend/bash.sh
 cd /workspace
 git clone https://github.com/your-org/your-repo.git
 ```
 
-## Dostep do SonarQube (lub innych lokalnych serwisow)
+## SonarQube access (or other local services)
 
-SonarQube dzialajacy na hoscie jest dostepny z kontenera pod adresem:
+SonarQube running on host is accessible from container at:
 ```
 http://host.docker.internal:9000
 ```
 
-Domyslne dane w `.env`:
+Default credentials in `.env`:
 ```
 SONAR_HOST_URL=http://host.docker.internal:9000
 SONAR_LOGIN=admin
 SONAR_PASSWORD=admin
 ```
 
-## Transfer plikow
+## File transfer
 
 ```bash
-# Z kontenera na host
-docker cp claude-dev:/workspace/file.txt ./file.txt
+# Container to host
+docker cp claude-backend:/workspace/file.txt ./file.txt
 
-# Z hosta do kontenera
-docker cp ./file.txt claude-dev:/workspace/file.txt
+# Host to container
+docker cp ./file.txt claude-backend:/workspace/file.txt
 ```
 
-Ale lepiej - korzystaj z git push/pull przez workspace.
+Prefer git push/pull through workspace instead.
 
-## Wolumeny (persistentne - przezywaja restart i down)
+---
 
-| Wolumen | Sciezka w kontenerze | Cel |
-|---------|---------------------|-----|
-| `claude-config` | `/home/node/.claude` | Sesja logowania, config Claude |
-| `maven-repo` | `/home/node/.m2` | Cache Maven (nie sciaga od nowa) |
-| `npm-cache` | `/home/node/.npm` | Cache npm |
-| `./workspace` | `/workspace` | Twoj kod (bind mount na dysk hosta) |
+## Docker command reference
 
-## Reset sesji Claude
+### stop vs down vs start vs up
+
+| Command | What it does | When to use |
+|---------|-------------|-------------|
+| `docker compose stop` | Stops container, keeps it | Taking a break |
+| `docker compose start` | Resumes stopped container | Coming back to work |
+| `docker compose down` | Stops and removes container | Want a clean start |
+| `docker compose up -d` | Creates and starts container | After `down` or first time |
+| `docker compose up -d --build` | Rebuilds image and starts | After Dockerfile changes |
+
+### Multiple terminals
+
+Main container process is Claude Code. You can open any number of
+additional bash sessions alongside:
 
 ```bash
-docker volume rm claude-code-devcontainer_claude-config
+connection/backend/attach.sh      # terminal 1 - claude
+connection/backend/bash.sh        # terminal 2 - bash
+connection/backend/bash.sh        # terminal 3 - another bash
+```
+
+### What is this container
+
+Isolated Linux (Debian) with CLI tools. No GUI, no remote desktop.
+Terminal in, terminal out.
+
+### Volumes (persistent - survive restart and stop)
+
+| Data | Host location | Container path |
+|------|--------------|----------------|
+| Workspace | `./workspace/{agent}/` | `/workspace` |
+| Claude config | `./agents/{agent}/claude/` | `/home/node/.claude` |
+| Maven cache | volume `maven-repo` | `/home/node/.m2` |
+| npm cache | volume `npm-cache` | `/home/node/.npm` |
+
+### Reset Claude session for an agent
+
+```bash
+rm -rf agents/{name}/claude/*
 ```
