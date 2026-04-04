@@ -35,6 +35,15 @@ Reviewer prompts are at `/opt/claude/skills/review-*.md` - used by orchestrator 
 - Ensure `.reviews/` is in the project's `.gitignore`. Never commit review counter files.
 - Secret violation reports are stored in `~/.claude/violations/` (persisted in agent volume).
 
+## SonarQube
+
+SonarQube is available from the container. Connection details are in environment variables:
+- `$SONAR_HOST_URL` (default: `http://host.docker.internal:9000`)
+- `$SONAR_LOGIN`
+- `$SONAR_PASSWORD`
+
+For Maven projects: `mvn sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_LOGIN -Dsonar.password=$SONAR_PASSWORD`
+
 ## Code standards enforced by review
 
 - All code, comments, and names in English

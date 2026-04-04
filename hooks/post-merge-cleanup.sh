@@ -8,18 +8,24 @@ if ! echo "$TOOL_INPUT" | grep -q "gh pr merge"; then
 fi
 
 REVIEW_DIR="/workspace/.reviews"
-BRANCH_FILE="$REVIEW_DIR/.last-merge-branch"
 
-if [ ! -f "$BRANCH_FILE" ]; then
+# Extract PR number or branch from the merge command
+PR_REF=$(echo "$TOOL_INPUT" | grep -oP 'gh pr merge\s+\K\S+')
+
+if [ -n "$PR_REF" ]; then
+    # Got PR number or branch from command - resolve to branch name
+    BRANCH=$(gh pr view "$PR_REF" --json headRefName --jq '.headRefName' 2>/dev/null)
+else
+    # No argument - gh pr merge uses current branch
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+fi
+
+if [ -z "$BRANCH" ]; then
     exit 0
 fi
 
-BRANCH=$(cat "$BRANCH_FILE")
 PR_ID=$(echo "$BRANCH" | tr '/' '_')
-COUNTER_FILE="$REVIEW_DIR/${PR_ID}.review-attempts"
 
-# Verify merge actually happened
-PR_STATE=$(gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null)
-if [ "$PR_STATE" = "MERGED" ]; then
-    rm -f "$COUNTER_FILE" "$BRANCH_FILE" "$REVIEW_DIR/${PR_ID}.approved" 2>/dev/null
-fi
+# Clean up review files for this branch only
+rm -f "$REVIEW_DIR/${PR_ID}.review-attempts" \
+      "$REVIEW_DIR/${PR_ID}.approved" 2>/dev/null
