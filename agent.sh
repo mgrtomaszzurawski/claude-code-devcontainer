@@ -17,8 +17,10 @@ case "$CMD" in
       echo "Name cannot be empty."
       exit 1
     fi
-    if ! echo "$AGENT" | grep -qE '^[a-zA-Z0-9_-]+$'; then
-      echo "Invalid name. Use only letters, numbers, hyphens and underscores."
+    # Docker compose project names: lowercase alphanumeric, hyphens, underscores
+    AGENT=$(echo "$AGENT" | tr '[:upper:]' '[:lower:]')
+    if ! echo "$AGENT" | grep -qE '^[a-z0-9][a-z0-9_-]*$'; then
+      echo "Invalid name. Use only lowercase letters, numbers, hyphens and underscores. Must start with letter or number."
       exit 1
     fi
     if [ -d "agent-shells/$AGENT" ]; then
