@@ -38,6 +38,11 @@ if [ ! -f "$COUNTER_FILE" ]; then
 fi
 
 ATTEMPTS=$(cat "$COUNTER_FILE")
+# Validate counter is numeric, reset if corrupted
+if ! echo "$ATTEMPTS" | grep -qE '^[0-9]+$'; then
+    echo "0" > "$COUNTER_FILE"
+    ATTEMPTS=0
+fi
 
 # Check if max attempts exceeded
 if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then

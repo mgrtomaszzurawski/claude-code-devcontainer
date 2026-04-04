@@ -17,6 +17,10 @@ case "$CMD" in
       echo "Name cannot be empty."
       exit 1
     fi
+    if ! echo "$AGENT" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+      echo "Invalid name. Use only letters, numbers, hyphens and underscores."
+      exit 1
+    fi
     if [ -d "agent-shells/$AGENT" ]; then
       echo "Agent '$AGENT' already exists."
       exit 1

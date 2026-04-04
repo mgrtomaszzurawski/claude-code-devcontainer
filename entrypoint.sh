@@ -49,7 +49,7 @@ if ! claude auth status &>/dev/null; then
 fi
 
 # Switch to agent-specific workspace
-cd "/workspace/${AGENT:-default}"
+cd "/workspace/${AGENT:-default}" || { echo "ERROR: Workspace /workspace/${AGENT:-default} not found."; exit 1; }
 
 # Execute CMD
 exec "$@"

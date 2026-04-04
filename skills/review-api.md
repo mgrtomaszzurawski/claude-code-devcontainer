@@ -41,6 +41,28 @@ request/response contracts, and integration interfaces.
 - Request/response examples that don't match actual schema
 - Missing error documentation
 
+## Severity guide
+
+- Breaking changes (removed/renamed fields, changed types) -> CRITICAL
+- Changed HTTP methods, removed endpoints -> CRITICAL
+- Missing request validation -> IMPORTANT
+- Inconsistent response format -> IMPORTANT
+- Missing deprecation notices -> SUGGESTION
+- Documentation gaps -> SUGGESTION
+
+## Review integration
+
+If you find any CRITICAL issues, run exactly:
+```bash
+echo false > .reviews/${PR_ID}.approved
+```
+NEVER write true to this file. NEVER touch it unless you have CRITICAL findings.
+
+After completing your review, post findings as a PR comment:
+```bash
+gh pr comment --body "<your review report>"
+```
+
 ## Output format
 
 Return findings as a list. Each finding must have:

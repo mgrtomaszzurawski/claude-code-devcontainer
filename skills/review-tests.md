@@ -53,6 +53,19 @@ This is the most important part. Check if the test ACTUALLY verifies something m
 - Do NOT check test coverage. Only review the test code that is in the diff.
 - This is a static code review only - read the diff, nothing else.
 
+## Review integration
+
+If you find any CRITICAL issues, run exactly:
+```bash
+echo false > .reviews/${PR_ID}.approved
+```
+NEVER write true to this file. NEVER touch it unless you have CRITICAL findings.
+
+After completing your review, post findings as a PR comment:
+```bash
+gh pr comment --body "<your review report>"
+```
+
 ## Severity guide
 
 - Empty/no-assertion tests -> CRITICAL
