@@ -46,6 +46,19 @@ credentials, keys, tokens, and sensitive data in code changes.
 - False positives are acceptable - flag anything suspicious. Better safe than sorry.
 - Check ALL file types: code, config, docs, scripts, CI files
 
+## Review integration
+
+If you find any CRITICAL issues, run exactly:
+```bash
+echo false > .reviews/${PR_ID}.approved
+```
+NEVER write true to this file. NEVER touch it unless you have CRITICAL findings.
+
+After completing your review, post findings as a PR comment:
+```bash
+gh pr comment --body "<your review report>"
+```
+
 ## Output format
 
 Return findings as a list. Each finding must have:

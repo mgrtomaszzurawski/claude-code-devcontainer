@@ -47,6 +47,28 @@ and common vulnerability patterns.
 - Insecure default configurations
 - Missing security headers
 
+## Severity guide
+
+- Injection vulnerabilities -> CRITICAL
+- Hardcoded credentials, missing auth -> CRITICAL
+- Sensitive data in logs/errors -> CRITICAL
+- Missing input validation on user-facing endpoints -> IMPORTANT
+- Weak algorithms, insecure defaults -> IMPORTANT
+- Missing security headers, permissive CORS -> SUGGESTION
+
+## Review integration
+
+If you find any CRITICAL issues, run exactly:
+```bash
+echo false > .reviews/${PR_ID}.approved
+```
+NEVER write true to this file. NEVER touch it unless you have CRITICAL findings.
+
+After completing your review, post findings as a PR comment:
+```bash
+gh pr comment --body "<your review report>"
+```
+
 ## Output format
 
 Return findings as a list. Each finding must have:

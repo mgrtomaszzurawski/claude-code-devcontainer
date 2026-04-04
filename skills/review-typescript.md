@@ -39,6 +39,28 @@ Focus on TypeScript, Angular, React, and Node.js specific issues.
 - Async test handling (proper awaits, done callbacks)
 - Mock cleanup between tests
 
+## Severity guide
+
+- `any` hiding real type errors -> CRITICAL
+- Hook rule violations, subscription leaks -> CRITICAL
+- Unhandled promise rejections -> IMPORTANT
+- Missing return types on public API -> IMPORTANT
+- Circular dependencies -> IMPORTANT
+- Bundle size, lazy loading -> SUGGESTION
+
+## Review integration
+
+If you find any CRITICAL issues, run exactly:
+```bash
+echo false > .reviews/${PR_ID}.approved
+```
+NEVER write true to this file. NEVER touch it unless you have CRITICAL findings.
+
+After completing your review, post findings as a PR comment:
+```bash
+gh pr comment --body "<your review report>"
+```
+
 ## Output format
 
 Return findings as a list. Each finding must have:

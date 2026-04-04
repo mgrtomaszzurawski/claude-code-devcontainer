@@ -8,14 +8,21 @@ if ! echo "$TOOL_INPUT" | grep -q "gh pr merge"; then
     exit 0
 fi
 
-REVIEW_DIR="/workspace/.reviews"
+REVIEW_DIR="$(pwd)/.reviews"
 MAX_ATTEMPTS=3
 TIMEOUT_SECONDS=300
 
-# Get current branch as PR identifier
-BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+# Extract PR number or branch from the merge command
+PR_REF=$(echo "$TOOL_INPUT" | grep -oP 'gh pr merge\s+\K\S+')
+
+if [ -n "$PR_REF" ]; then
+    BRANCH=$(gh pr view "$PR_REF" --json headRefName --jq '.headRefName' 2>/dev/null)
+else
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+fi
+
 if [ -z "$BRANCH" ]; then
-    echo "ERROR: Not in a git repository."
+    echo "ERROR: Could not determine branch for PR."
     exit 2
 fi
 
@@ -31,6 +38,11 @@ if [ ! -f "$COUNTER_FILE" ]; then
 fi
 
 ATTEMPTS=$(cat "$COUNTER_FILE")
+# Validate counter is numeric, reset if corrupted
+if ! echo "$ATTEMPTS" | grep -qE '^[0-9]+$'; then
+    echo "0" > "$COUNTER_FILE"
+    ATTEMPTS=0
+fi
 
 # Check if max attempts exceeded
 if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
@@ -38,9 +50,6 @@ if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
     echo "Reset: rm $COUNTER_FILE"
     exit 2
 fi
-
-# Save branch name for post-merge cleanup (HEAD may change after merge)
-echo "$BRANCH" > "$REVIEW_DIR/.last-merge-branch"
 
 # Skip if manual /review already approved this branch
 APPROVED_FILE="$REVIEW_DIR/${PR_ID}.approved"

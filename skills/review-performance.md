@@ -44,6 +44,28 @@ efficiency, resource usage, and scalability.
 - Cache invalidation issues
 - Unbounded cache growth
 
+## Severity guide
+
+- N+1 queries, O(n^2) on large datasets -> CRITICAL
+- Missing timeouts on external calls -> IMPORTANT
+- Sequential calls that could be parallel -> IMPORTANT
+- Memory leaks, unbounded caches -> IMPORTANT
+- Missing lazy loading, bundle size -> SUGGESTION
+- Minor caching opportunities -> SUGGESTION
+
+## Review integration
+
+If you find any CRITICAL issues, run exactly:
+```bash
+echo false > .reviews/${PR_ID}.approved
+```
+NEVER write true to this file. NEVER touch it unless you have CRITICAL findings.
+
+After completing your review, post findings as a PR comment:
+```bash
+gh pr comment --body "<your review report>"
+```
+
 ## Output format
 
 Return findings as a list. Each finding must have:

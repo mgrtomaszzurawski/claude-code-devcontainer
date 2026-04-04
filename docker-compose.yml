@@ -19,6 +19,7 @@ services:
     tty: true
 
     environment:
+      - AGENT=${AGENT:-default}
       - GIT_USER_NAME=${GIT_USER_NAME:-}
       - GIT_USER_EMAIL=${GIT_USER_EMAIL:-}
       - SONAR_HOST_URL=${SONAR_HOST_URL:-http://host.docker.internal:9000}
@@ -26,8 +27,8 @@ services:
       - SONAR_PASSWORD=${SONAR_PASSWORD:-admin}
 
     volumes:
-      # Each agent gets its own workspace subfolder
-      - ./agent-data/${AGENT:-default}:/workspace
+      # Each agent gets unique path for Claude Code project isolation (/workspace/{name})
+      - ./agent-data/${AGENT:-default}:/workspace/${AGENT:-default}
 
       # Entire home dir shared between all agents
       # Auth (.claude.json), config (.claude/), maven (.m2), npm (.npm) - all persist
