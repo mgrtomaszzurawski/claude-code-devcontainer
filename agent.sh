@@ -96,12 +96,9 @@ EOF
     fi
     mkdir -p "agent-data/$AGENT"
 
-    # Check if container exists but is stopped
-    if docker ps -a --filter "name=^claude-${AGENT}$" --format "{{.Status}}" | grep -q "Exited"; then
-      AGENT="$AGENT" docker compose -p "claude-$AGENT" start
-    else
-      AGENT="$AGENT" docker compose -p "claude-$AGENT" up -d --build
-    fi
+    # Always use up -d --build to pick up image updates after upgrade
+    # Recreates container if image changed, no-op if already running with current image
+    AGENT="$AGENT" docker compose -p "claude-$AGENT" up -d --build
 
     echo ""
     echo "Agent '$AGENT' is running."
@@ -210,6 +207,34 @@ EOF
     fi
     ;;
 
+  upgrade)
+    echo "Rebuilding image with latest Claude Code..."
+    echo "Running pods are NOT affected until restart."
+    echo ""
+    docker compose build --no-cache
+    if [ $? -eq 0 ]; then
+      echo ""
+      echo "Image rebuilt. To upgrade a pod: stop -> start"
+      echo "Auth, chat history, and theme are preserved."
+      echo ""
+      # Show which pods need restart
+      if [ -d "agent-shells" ] && [ "$(ls -A agent-shells 2>/dev/null)" ]; then
+        echo "Running pods (need stop/start for new version):"
+        for dir in agent-shells/*/; do
+          name=$(basename "$dir")
+          status=$(docker ps --filter "name=^claude-${name}$" --format "{{.Status}}" 2>/dev/null)
+          if [ -n "$status" ]; then
+            echo "  $name - $status"
+          fi
+        done
+      fi
+    else
+      echo ""
+      echo "ERROR: Image build failed."
+      exit 1
+    fi
+    ;;
+
   help|*)
     echo "Claude Code Agent Manager"
     echo ""
@@ -224,6 +249,7 @@ EOF
     echo "  logs <name>     Show agent startup logs"
     echo "  reset <name>    Remove container + scripts, keep workspace files"
     echo "  destroy <name>  Remove agent, config, and workspace"
+    echo "  upgrade         Rebuild image with latest Claude Code"
     echo "  list            Show all agents and their status"
     ;;
 esac
