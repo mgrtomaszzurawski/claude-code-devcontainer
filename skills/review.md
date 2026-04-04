@@ -8,8 +8,8 @@ You are a code review orchestrator. You act as a quality gate before PR merge.
    ```bash
    BRANCH=$(git rev-parse --abbrev-ref HEAD)
    PR_ID=$(echo "$BRANCH" | tr '/' '_')
-   mkdir -p /workspace/.reviews
-   echo "true" > /workspace/.reviews/${PR_ID}.approved
+   mkdir -p .reviews
+   echo "true" > .reviews/${PR_ID}.approved
    ```
    This flag starts as `true`. Reviewers that find CRITICAL issues will set it to `false`.
 2. Get the diff: `git diff develop...HEAD`
@@ -30,10 +30,10 @@ You are a code review orchestrator. You act as a quality gate before PR merge.
    - **Spawn if relevant**: Performance (DB queries, loops, API calls), API Contract (endpoints, DTOs)
    - Launch multiple Agent calls in a single message for parallel execution
    - **Each reviewer prompt MUST include these instructions (copy verbatim):**
-     - "ONLY if you find CRITICAL issues, run exactly: `echo false > /workspace/.reviews/${PR_ID}.approved` - NEVER write true to this file, NEVER read this file, NEVER touch it unless you have CRITICAL findings."
+     - "ONLY if you find CRITICAL issues, run exactly: `echo false > .reviews/${PR_ID}.approved` - NEVER write true to this file, NEVER read this file, NEVER touch it unless you have CRITICAL findings."
      - "After completing your review, post your findings as a comment on the PR: `gh pr comment --body \"<your review report>\"`"
 6. Wait for all reviewers to complete
-7. Read the approval flag: `cat /workspace/.reviews/${PR_ID}.approved`
+7. Read the approval flag: `cat .reviews/${PR_ID}.approved`
 8. Collect findings and decide:
    - Any CRITICAL findings -> REJECT
    - Only IMPORTANT or SUGGESTION -> APPROVE with notes

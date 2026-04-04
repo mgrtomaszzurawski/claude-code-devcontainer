@@ -8,7 +8,7 @@ if ! echo "$TOOL_INPUT" | grep -q "gh pr merge"; then
     exit 0
 fi
 
-REVIEW_DIR="/workspace/.reviews"
+REVIEW_DIR="$(pwd)/.reviews"
 MAX_ATTEMPTS=3
 TIMEOUT_SECONDS=300
 

@@ -7,7 +7,7 @@ if ! echo "$TOOL_INPUT" | grep -q "gh pr merge"; then
     exit 0
 fi
 
-REVIEW_DIR="/workspace/.reviews"
+REVIEW_DIR="$(pwd)/.reviews"
 
 # Extract PR number or branch from the merge command
 PR_REF=$(echo "$TOOL_INPUT" | grep -oP 'gh pr merge\s+\K\S+')

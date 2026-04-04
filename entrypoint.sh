@@ -48,5 +48,8 @@ if ! claude auth status &>/dev/null; then
     claude login
 fi
 
+# Switch to agent-specific workspace
+cd "/workspace/${AGENT:-default}"
+
 # Execute CMD
 exec "$@"
